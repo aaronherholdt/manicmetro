@@ -454,7 +454,7 @@ class TeamworkManager {
     
     startMission() {
         this.missionActive = true;
-        this.missionTimeRemaining = 300; // 5 minutes
+        this.missionTimeRemaining = 600; // 10 minutes in seconds
         this.updateTimer();
         
         // Start mission timer
@@ -463,7 +463,9 @@ class TeamworkManager {
             this.updateTimer();
             
             // Warn when time is getting low
-            if (this.missionTimeRemaining === 60) {
+            if (this.missionTimeRemaining === 120) {
+                this.showNotification('Two minutes remaining!', 'warning');
+            } else if (this.missionTimeRemaining === 60) {
                 this.showNotification('One minute remaining!', 'warning');
             } else if (this.missionTimeRemaining === 30) {
                 this.showNotification('30 seconds remaining!', 'warning');
@@ -1047,48 +1049,48 @@ class TeamworkManager {
     // Called by the game to update teamwork features
     update(deltaTime) {
         // Only update if the game is not paused and mission is active
-        if (this.missionActive && this.game && !this.game.paused) {
-            this.missionTimeRemaining -= deltaTime;
+        if (!this.missionActive || !this.game || this.game.paused) return; // Stop if mission ended or game paused
+
+        this.missionTimeRemaining -= deltaTime;
+
+        // Update timer display
+        if (this.objectiveTimerEl) {
+            const minutes = Math.floor(this.missionTimeRemaining / 60);
+            const seconds = Math.floor(this.missionTimeRemaining % 60);
+            this.objectiveTimerEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
             
-            // Update timer display
-            if (this.objectiveTimerEl) {
-                const minutes = Math.floor(this.missionTimeRemaining / 60);
-                const seconds = Math.floor(this.missionTimeRemaining % 60);
-                this.objectiveTimerEl.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            // Add warning classes when time is running low
+            if (this.missionTimeRemaining <= 60) {
+                this.objectiveTimerEl.classList.add('critical');
                 
-                // Add warning classes when time is running low
-                if (this.missionTimeRemaining <= 60) {
-                    this.objectiveTimerEl.classList.add('critical');
-                    
-                    // Display time warning notification at 1 minute remaining
-                    if (Math.floor(this.missionTimeRemaining) === 60) {
-                        this.showNotification('One minute remaining!', 'warning');
-                    }
-                } else if (this.missionTimeRemaining <= 120) {
-                    this.objectiveTimerEl.classList.add('warning');
-                    
-                    // Display time warning notification at 2 minutes remaining
-                    if (Math.floor(this.missionTimeRemaining) === 120) {
-                        this.showNotification('Two minutes remaining!', 'warning');
-                    }
+                // Display time warning notification at 1 minute remaining
+                if (Math.floor(this.missionTimeRemaining) === 60) {
+                    this.showNotification('One minute remaining!', 'warning');
+                }
+            } else if (this.missionTimeRemaining <= 120) {
+                this.objectiveTimerEl.classList.add('warning');
+                
+                // Display time warning notification at 2 minutes remaining
+                if (Math.floor(this.missionTimeRemaining) === 120) {
+                    this.showNotification('Two minutes remaining!', 'warning');
                 }
             }
-            
-            // Check if time is up
-            if (this.missionTimeRemaining <= 0) {
-                this.endMission(false);
-            }
-            
-            // Check for ongoing objectives that need continuous monitoring
-            const needsUpdate = this.objectives.some(obj => 
-                !obj.completed && 
-                ['prevent_overcrowding', 'line_diversity', 'balanced_stations'].includes(obj.type)
-            );
-            
-            if (needsUpdate) {
-                // Check for specific objective types that need regular updates
-                this.checkContinuousObjectives();
-            }
+        }
+        
+        // Check if time is up
+        if (this.missionTimeRemaining <= 0) {
+            this.endMission(false);
+        }
+        
+        // Check for ongoing objectives that need continuous monitoring
+        const needsUpdate = this.objectives.some(obj => 
+            !obj.completed && 
+            ['prevent_overcrowding', 'line_diversity', 'balanced_stations'].includes(obj.type)
+        );
+        
+        if (needsUpdate) {
+            // Check for specific objective types that need regular updates
+            this.checkContinuousObjectives();
         }
     }
     
@@ -1306,4 +1308,4 @@ class TeamworkManager {
             }
         }, 3000);
     }
-} 
+}
