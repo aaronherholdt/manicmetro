@@ -216,8 +216,11 @@ class TeamworkManager {
         this.assignStationShapes(players);
         this.updateRoleDisplay(currentPlayerId);
         this.updateShapeAssignmentInfo(currentPlayerId);
-        this.generateObjectives();
-        this.startMission();
+        
+        // We no longer call these methods here as they are handled
+        // in MultiplayerManager.initializeTeamworkFeatures() instead
+        // this.generateObjectives();
+        // this.startMission();
         
         // Set initial UI state
         this.updateObjectivesList();
@@ -453,6 +456,12 @@ class TeamworkManager {
     }
     
     startMission() {
+        // Don't start if already active
+        if (this.missionActive) {
+            console.log('Mission already active, not starting again');
+            return;
+        }
+        
         this.missionActive = true;
         this.missionTimeRemaining = 600; // 10 minutes in seconds
         this.updateTimer();
@@ -516,13 +525,26 @@ class TeamworkManager {
     }
     
     updateObjectivesList() {
+        // Ensure the objectives list element exists
+        if (!this.objectivesListEl) {
+            console.error('Objectives list element not found');
+            return;
+        }
+        
         // Clear current objectives display
         this.objectivesListEl.innerHTML = '';
+        
+        // Skip if no objectives
+        if (!this.objectives || this.objectives.length === 0) {
+            console.log('No objectives to display');
+            return;
+        }
         
         // Create objective elements
         this.objectives.forEach((objective, index) => {
             const objectiveEl = document.createElement('div');
             objectiveEl.className = 'objective-item';
+            objectiveEl.id = `objective-${index}`; // Add ID for easier selection
             
             // Add appropriate class based on state
             if (index === this.activeObjectiveIndex) {
@@ -1308,4 +1330,4 @@ class TeamworkManager {
             }
         }, 3000);
     }
-}
+} 
