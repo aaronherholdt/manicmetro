@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Metro Manic - Subway Network Simulator</title>
+    <link rel="stylesheet" href="src/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="Metro Manic - A multiplayer subway network simulator game inspired by Mini Metro">
+</head>
+<body>
+    <!-- Multiplayer login overlay -->
+    <div id="loginOverlay" class="overlay">
+        <div class="overlay-content">
+            <div class="logo-container">
+                <div class="game-logo">
+                    <i class="fas fa-subway"></i>
+                </div>
+            </div>
+            <h2>Metro Manic</h2>
+            <p class="subtitle">Collaborative Subway Network Simulator</p>
+            <div class="login-form">
+                <div class="input-group">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="15">
+                </div>
+                <button id="joinGameBtn" class="primary-btn">
+                    <i class="fas fa-sign-in-alt"></i> Join Game
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Waiting room overlay -->
+    <div id="waitingRoomOverlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2>Waiting Room</h2>
+            <div class="player-list">
+                <h3><i class="fas fa-users"></i> Players</h3>
+                <ul id="playersList"></ul>
+            </div>
+            <div class="waiting-controls">
+                <p id="waitingMessage">
+                    <i class="fas fa-spinner fa-spin"></i> Waiting for other players...
+                </p>
+                <button id="startGameBtn" class="primary-btn hidden">
+                    <i class="fas fa-play"></i> Start Game
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main game container -->
+    <div class="game-container">
+        <!-- Team objectives panel -->
+        <div class="objectives-panel">
+            <div class="objectives-header">
+                <h3><i class="fas fa-tasks"></i> Team Objectives</h3>
+                <span class="time-remaining" id="objectiveTimer">05:00</span>
+            </div>
+            <div class="objectives-list" id="objectivesList">
+                <!-- Objectives will be dynamically added here -->
+            </div>
+            <div class="team-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="teamProgressBar"></div>
+                </div>
+                <span id="teamProgressText">Team Score: 0</span>
+            </div>
+        </div>
+        
+        <!-- Role indicator -->
+        <div class="role-indicator" id="roleIndicator">
+            <div class="role-icon"></div>
+            <div class="role-info">
+                <span class="role-name" id="roleName">Role</span>
+                <span class="role-desc" id="roleDesc">Your role description</span>
+            </div>
+        </div>
+        
+        <!-- Full screen button -->
+        <div class="fullscreen-btn" id="fullscreenBtn">
+            <i class="fas fa-expand"></i>
+        </div>
+        
+        <!-- Navigation controls for mobile and panning -->
+        <div class="nav-controls">
+            <div class="nav-btn zoom-in" id="zoomInBtn">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="nav-btn zoom-out" id="zoomOutBtn">
+                <i class="fas fa-minus"></i>
+            </div>
+        </div>
+        
+        <!-- Station Shape Selector -->
+        <div id="stationShapeSelector" class="station-shape-selector">
+            <h4>Select Station Shape</h4>
+            <div class="shape-options">
+                <div class="shape-option" data-shape="circle">
+                    <div class="shape-preview circle"></div>
+                    <div class="shape-name">Circle (Red)</div>
+                </div>
+                <div class="shape-option" data-shape="square">
+                    <div class="shape-preview square"></div>
+                    <div class="shape-name">Square (Blue)</div>
+                </div>
+                <div class="shape-option" data-shape="triangle">
+                    <div class="shape-preview triangle"></div>
+                    <div class="shape-name">Triangle (Yellow)</div>
+                </div>
+                <div class="shape-option" data-shape="diamond">
+                    <div class="shape-preview diamond"></div>
+                    <div class="shape-name">Diamond (Green)</div>
+                </div>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="ui-container">
+            <div class="tools">
+                <button id="newLineBtn" class="tool-btn" data-tooltip="Create a new subway line">
+                    <i class="fas fa-route"></i> New Line
+                </button>
+                <button id="newStationBtn" class="tool-btn" data-tooltip="Place a new station manually - this is the only way to add stations">
+                    <i class="fas fa-map-marker-alt"></i> New Station
+                </button>
+                <button id="pauseBtn" class="tool-btn" data-tooltip="Pause/Resume game">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+            </div>
+            <div class="stats">
+                <div id="time">
+                    <span class="stat-label"><i class="fas fa-calendar-day"></i></span>
+                    <span id="day">1</span>
+                </div>
+                <div id="passengers">
+                    <span class="stat-label"><i class="fas fa-user"></i></span>
+                    <span id="passengerCount">0</span>
+                </div>
+                <div id="resources">
+                    <span class="stat-label"><i class="fas fa-subway"></i></span>
+                    <span id="lineCount">3/5</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Team reflection overlay (shown at mission completion or failure) -->
+        <div id="reflectionOverlay" class="overlay hidden">
+            <div class="overlay-content reflection-content">
+                <h2 id="reflectionTitle">Mission Complete!</h2>
+                <div class="reflection-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Team Score</span>
+                        <span class="stat-value" id="finalScore">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Objectives Completed</span>
+                        <span class="stat-value" id="objectivesCompleted">0/0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Passengers Transported</span>
+                        <span class="stat-value" id="totalPassengers">0</span>
+                    </div>
+                </div>
+                <div class="reflection-questions">
+                    <h3><i class="fas fa-comments"></i> Team Reflection</h3>
+                    <p>What worked well in your collaboration?</p>
+                    <p>What could be improved next time?</p>
+                    <p>How did your team overcome challenges?</p>
+                </div>
+                <button id="continueBtn" class="primary-btn">
+                    <i class="fas fa-arrow-right"></i> Continue
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div id="loadingIndicator" class="loading-indicator hidden"></div>
+    </div>
+    
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script src="src/js/game.js"></script>
+    <script src="src/js/renderer.js"></script>
+    <script src="src/js/station.js"></script>
+    <script src="src/js/line.js"></script>
+    <script src="src/js/passenger.js"></script>
+    <script src="src/js/teamwork.js"></script>
+    <script src="src/js/multiplayer.js"></script>
+    <script src="src/js/app.js"></script>
+</body>
+</html> 
