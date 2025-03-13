@@ -29,6 +29,9 @@ const gameRooms = new Map();
 // Player data storage
 const players = new Map();
 
+// Default room ID for players joining without a room code
+const DEFAULT_ROOM_ID = 'DEFAULT';
+
 // Generate a random room code (4 uppercase letters)
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -66,11 +69,10 @@ io.on('connection', (socket) => {
     const { playerName, roomCode } = data;
     let room;
     
-    // If room code provided, join that room if it exists
+    // If a roomCode is provided and exists, join that room
     if (roomCode && gameRooms.has(roomCode)) {
       room = gameRooms.get(roomCode);
       
-      // Check if game already started or room is full
       if (room.gameStarted) {
         socket.emit('error', { message: 'Game already in progress' });
         return;
@@ -80,9 +82,44 @@ io.on('connection', (socket) => {
         socket.emit('error', { message: 'Room is full' });
         return;
       }
+    } else if (roomCode) {
+      // If a roomCode is provided but doesn't exist, create a new room with that code
+      room = {
+        id: roomCode,
+        players: [],
+        gameStarted: false,
+        createdAt: Date.now(),
+        stations: [],
+        lines: [],
+        objectives: []
+      };
+      gameRooms.set(roomCode, room);
     } else {
-      // Create a new room
-      room = createGameRoom();
+      // Use or create the default room if no roomCode is provided
+      if (!gameRooms.has(DEFAULT_ROOM_ID)) {
+        room = {
+          id: DEFAULT_ROOM_ID,
+          players: [],
+          gameStarted: false,
+          createdAt: Date.now(),
+          stations: [],
+          lines: [],
+          objectives: []
+        };
+        gameRooms.set(DEFAULT_ROOM_ID, room);
+      } else {
+        room = gameRooms.get(DEFAULT_ROOM_ID);
+        
+        if (room.gameStarted) {
+          socket.emit('error', { message: 'Default game already in progress. Please wait or join another room.' });
+          return;
+        }
+        
+        if (room.players.length >= 4) {
+          socket.emit('error', { message: 'Default room is full. Try creating a new game.' });
+          return;
+        }
+      }
     }
     
     // Create player
@@ -94,14 +131,11 @@ io.on('connection', (socket) => {
       joinedAt: Date.now()
     };
     
-    // Add player to room
     room.players.push(player);
     players.set(socket.id, { playerId: player.id, roomId: room.id });
     
-    // Join the socket.io room
     socket.join(room.id);
     
-    // Inform client about the room and player details
     socket.emit('game_joined', {
       roomCode: room.id,
       playerId: player.id,
@@ -109,7 +143,6 @@ io.on('connection', (socket) => {
       players: room.players
     });
     
-    // Inform all players in the room about the new player
     io.to(room.id).emit('player_joined', {
       players: room.players
     });
@@ -271,6 +304,71 @@ io.on('connection', (socket) => {
     // Remove player data
     players.delete(socket.id);
     console.log(`Client disconnected: ${socket.id}`);
+  });
+
+  // Player rejoins game after disconnection
+  socket.on('rejoin_game', (data) => {
+    console.log(`Player attempting to rejoin: ${data.playerId}`);
+    
+    // Find all rooms
+    for (const [roomId, room] of gameRooms.entries()) {
+      // Check if player was in this room
+      const existingPlayerIndex = room.players.findIndex(p => p.id === data.playerId);
+      
+      if (existingPlayerIndex !== -1) {
+        console.log(`Found player in room ${roomId}`);
+        
+        // Update the player's socket ID if it changed
+        if (room.players[existingPlayerIndex].socketId !== socket.id) {
+          room.players[existingPlayerIndex].socketId = socket.id;
+        }
+        
+        // Associate the socket with this player
+        players.set(socket.id, { playerId: data.playerId, roomId: roomId });
+        
+        // Join the socket to the room
+        socket.join(roomId);
+        
+        // Send current game state to the rejoined player
+        socket.emit('game_joined', {
+          roomCode: roomId,
+          playerId: data.playerId,
+          isHost: room.players[existingPlayerIndex].isHost,
+          players: room.players
+        });
+        
+        // If game is already in progress, send that too
+        if (room.gameStarted) {
+          socket.emit('game_started', {
+            players: room.players,
+            roles: room.roles || {},
+            stationShapes: room.stationShapes || {},
+            objectives: room.objectives || []
+          });
+          
+          // Send current game state
+          socket.emit('game_state_update', {
+            stations: room.stations,
+            lines: room.lines,
+            passengers: room.passengers,
+            day: room.day,
+            time: room.time
+          });
+        }
+        
+        // Inform other players about the rejoin
+        socket.to(roomId).emit('player_rejoined', {
+          playerId: data.playerId,
+          playerName: data.playerName
+        });
+        
+        console.log(`Player ${data.playerName} rejoined room ${roomId}`);
+        return;
+      }
+    }
+    
+    // If we get here, player wasn't found in any room
+    socket.emit('error', { message: 'Could not find your previous game session' });
   });
 });
 
