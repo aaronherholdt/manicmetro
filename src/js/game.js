@@ -256,43 +256,30 @@ class Game {
     
     update(deltaTime) {
         if (this.paused) return;
-        
+      
         this.time += deltaTime;
-        
-        // Every 10 seconds is a new day
+      
         if (this.time >= 10) {
-            this.time = 0;
-            this.day++;
-            
-            // Remove automatic station generation - only players can add stations now
-            // if (this.day % 3 === 0) {
-            //     this.addRandomStation();
-            // }
-            
-            // Get a list of current station types that exist in the game
-            const existingTypes = new Set(this.stations.map(s => s.type));
-            
-            // Get a list of missing station types
-            const missingTypes = this.stationTypes.filter(type => !existingTypes.has(type));
-            
-            // Add new passengers periodically with a focus on guiding players
-            // toward building the missing station types
-            if (missingTypes.length > 0) {
-                // Generate 1-2 passengers per day that want to go to missing station types
-                const passengerCount = Math.min(2, this.stations.length);
-                for (let i = 0; i < passengerCount; i++) {
-                    const randomStationId = Math.floor(Math.random() * this.stations.length);
-                    this.addPassenger(randomStationId);
-                }
-            } else {
-                // When all station types exist, generate normal passenger traffic
-                for (let i = 0; i < Math.min(3, this.stations.length); i++) {
-                    const randomStationId = Math.floor(Math.random() * this.stations.length);
-                    this.addPassenger(randomStationId);
-                }
+          this.time = 0;
+          this.day++;
+      
+          const existingTypes = new Set(this.stations.map(s => s.type));
+          const missingTypes = this.stationTypes.filter(type => !existingTypes.has(type));
+      
+          if (missingTypes.length > 0) {
+            const passengerCount = Math.min(1, this.stations.length); // Reduced from 2 to 1
+            for (let i = 0; i < passengerCount; i++) {
+              const randomStationId = Math.floor(Math.random() * this.stations.length);
+              this.addPassenger(randomStationId);
             }
-            
-            this.updateStats();
+          } else {
+            for (let i = 0; i < Math.min(2, this.stations.length); i++) { // Reduced from 3 to 2
+              const randomStationId = Math.floor(Math.random() * this.stations.length);
+              this.addPassenger(randomStationId);
+            }
+          }
+      
+          this.updateStats();
         }
         
         // Update passenger wait times
@@ -442,36 +429,30 @@ class Game {
     
     gameOver() {
         this.paused = true;
-        
-        // Notify teamwork manager about game over
+      
         if (this.isMultiplayer && window.multiplayerManager && window.multiplayerManager.teamworkManager) {
-            // End mission with failure
-            window.multiplayerManager.teamworkManager.endMission(false);
-            
-            // Show a game over notification
-            window.multiplayerManager.teamworkManager.showNotification('Game Over! A station was overcrowded.', 'error');
+          window.multiplayerManager.teamworkManager.endMission(false);
+          window.multiplayerManager.teamworkManager.showNotification('Game Over! A station was overcrowded.', 'error');
         }
-        
-        // In multiplayer, show different game over message
+      
         if (this.isMultiplayer) {
-            // Calculate winner based on scores
-            let highestScore = -1;
-            let winner = null;
-            
-            this.players.forEach(player => {
-                if (player.score > highestScore) {
-                    highestScore = player.score;
-                    winner = player;
-                }
-            });
-            
-            if (winner) {
-                alert(`Game Over! ${winner.name} wins with ${winner.score} points!`);
-            } else {
-                alert(`Game Over! Your subway system lasted ${this.day} days.`);
+          let highestScore = -1;
+          let winner = null;
+      
+          this.players.forEach(player => {
+            if (player.score > highestScore) {
+              highestScore = player.score;
+              winner = player;
             }
-        } else {
+          });
+      
+          if (winner) {
+            alert(`Game Over! ${winner.name} wins with ${winner.score} points!`);
+          } else {
             alert(`Game Over! Your subway system lasted ${this.day} days.`);
+          }
+        } else {
+          alert(`Game Over! Your subway system lasted ${this.day} days.`);
         }
     }
     
