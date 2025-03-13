@@ -74,7 +74,7 @@ class MultiplayerManager {
         this.socket.on('connect', () => {
             console.log('Connected to game server with socket ID:', this.socket.id);
             
-            // Join game with player name only, no room code
+            // Join game with player name - will use default room automatically
             this.socket.emit('join_game', {
                 playerName: this.playerName
             });
@@ -125,9 +125,17 @@ class MultiplayerManager {
             // Update host UI
             if (this.isHost) {
                 this.startGameBtn.classList.remove('hidden');
-                this.waitingMessage.textContent = `You are the host. Click Start Game when ready.`;
+                if (this.roomCode === 'DEFAULT') {
+                    this.waitingMessage.textContent = `You are the host of the main game. Click Start Game when ready.`;
+                } else {
+                    this.waitingMessage.textContent = `You are the host of room ${this.roomCode}. Click Start Game when ready.`;
+                }
             } else {
-                this.waitingMessage.textContent = `Waiting for the host to start the game...`;
+                if (this.roomCode === 'DEFAULT') {
+                    this.waitingMessage.textContent = `Waiting for the host to start the game...`;
+                } else {
+                    this.waitingMessage.textContent = `Waiting for the host of room ${this.roomCode} to start the game...`;
+                }
             }
         });
         
@@ -148,7 +156,11 @@ class MultiplayerManager {
             if (this.players.length > 0 && this.players[0].id === this.playerId && !this.isHost) {
                 this.isHost = true;
                 this.startGameBtn.classList.remove('hidden');
-                this.waitingMessage.textContent = `You are now the host. Click Start Game when ready.`;
+                if (this.roomCode === 'DEFAULT') {
+                    this.waitingMessage.textContent = `You are now the host of the main game. Click Start Game when ready.`;
+                } else {
+                    this.waitingMessage.textContent = `You are now the host of room ${this.roomCode}. Click Start Game when ready.`;
+                }
             }
         });
         
