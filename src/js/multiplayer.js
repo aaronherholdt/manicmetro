@@ -18,41 +18,8 @@ class MultiplayerManager {
         this.startGameBtn = document.getElementById('startGameBtn');
         this.waitingMessage = document.getElementById('waitingMessage');
         
-        // Room code input field - we'll add this to the DOM
-        this.createRoomCodeInput();
-        
         // Initialization
         this.setupEventListeners();
-    }
-    
-    // Create a room code input field if it doesn't exist
-    createRoomCodeInput() {
-        // Check if it already exists
-        if (document.getElementById('roomCodeInput')) return;
-        
-        // Create container for the room code input
-        const roomCodeContainer = document.createElement('div');
-        roomCodeContainer.className = 'input-group';
-        
-        // Create icon
-        const icon = document.createElement('i');
-        icon.className = 'fas fa-home input-icon';
-        roomCodeContainer.appendChild(icon);
-        
-        // Create input field
-        const roomCodeInput = document.createElement('input');
-        roomCodeInput.type = 'text';
-        roomCodeInput.id = 'roomCodeInput';
-        roomCodeInput.placeholder = 'Room code (optional)';
-        roomCodeInput.maxLength = 4;
-        roomCodeInput.style.textTransform = 'uppercase';
-        roomCodeContainer.appendChild(roomCodeInput);
-        
-        // Find the login form
-        const loginForm = document.querySelector('.login-form');
-        
-        // Insert before the join button
-        loginForm.insertBefore(roomCodeContainer, this.joinGameBtn);
     }
     
     setupEventListeners() {
@@ -100,14 +67,9 @@ class MultiplayerManager {
         this.socket.on('connect', () => {
             console.log('Connected to game server with socket ID:', this.socket.id);
             
-            // Get room code if provided
-            const roomCodeInput = document.getElementById('roomCodeInput');
-            const roomCode = roomCodeInput ? roomCodeInput.value.trim().toUpperCase() : '';
-            
-            // Join game with player name and optional room code
+            // Join game with player name only, no room code
             this.socket.emit('join_game', {
-                playerName: this.playerName,
-                roomCode: roomCode
+                playerName: this.playerName
             });
         });
         
@@ -130,9 +92,9 @@ class MultiplayerManager {
             // Update host UI
             if (this.isHost) {
                 this.startGameBtn.classList.remove('hidden');
-                this.waitingMessage.textContent = `You are the host. Room code: ${this.roomCode}. Click Start Game when ready.`;
+                this.waitingMessage.textContent = `You are the host. Click Start Game when ready.`;
             } else {
-                this.waitingMessage.textContent = `Room code: ${this.roomCode}. Waiting for the host to start the game...`;
+                this.waitingMessage.textContent = `Waiting for the host to start the game...`;
             }
         });
         
@@ -153,7 +115,7 @@ class MultiplayerManager {
             if (this.players.length > 0 && this.players[0].id === this.playerId && !this.isHost) {
                 this.isHost = true;
                 this.startGameBtn.classList.remove('hidden');
-                this.waitingMessage.textContent = `You are now the host. Room code: ${this.roomCode}. Click Start Game when ready.`;
+                this.waitingMessage.textContent = `You are now the host. Click Start Game when ready.`;
             }
         });
         
