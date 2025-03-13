@@ -6,7 +6,7 @@ class Station {
         this.type = type; // circle, square, triangle
         this.passengers = [];
         this.radius = 15;
-        this.capacity = 6; // Maximum number of passengers before game over
+        this.capacity = 8; // Maximum number of passengers before game over
     }
     
     addPassenger(passenger) {
