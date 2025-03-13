@@ -50,13 +50,20 @@ class MultiplayerManager {
         console.log('Connecting to game server...');
         
         // Connect to Socket.IO server
-        // If the server is on a different domain, replace with the actual URL
+        // Update with your actual deployment URL (like Render)
         const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? `http://${window.location.hostname}:3000` 
-            : window.location.origin;
+            : 'https://manicmetro.onrender.com';  // Replace with your actual Render URL
             
-        // Initialize Socket.IO connection
-        this.socket = io(serverUrl);
+        console.log('Attempting to connect to server:', serverUrl);
+            
+        // Initialize Socket.IO connection with reconnection options
+        this.socket = io(serverUrl, {
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 10000
+        });
         
         // Setup socket event handlers
         this.setupSocketHandlers();
@@ -71,6 +78,32 @@ class MultiplayerManager {
             this.socket.emit('join_game', {
                 playerName: this.playerName
             });
+        });
+        
+        // Connection error
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            this.showNotification(`Connection error: ${error.message}. Trying to reconnect...`, 'error');
+        });
+        
+        // Reconnect attempt
+        this.socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log(`Reconnection attempt #${attemptNumber}`);
+            this.showNotification(`Reconnection attempt #${attemptNumber}...`, 'warning');
+        });
+        
+        // Reconnected
+        this.socket.on('reconnect', () => {
+            console.log('Reconnected to server');
+            this.showNotification('Reconnected to server!', 'success');
+            
+            // If we were in a game, attempt to rejoin
+            if (this.playerId && this.playerName) {
+                this.socket.emit('rejoin_game', {
+                    playerId: this.playerId,
+                    playerName: this.playerName
+                });
+            }
         });
         
         // Joined game successfully
@@ -116,6 +149,51 @@ class MultiplayerManager {
                 this.isHost = true;
                 this.startGameBtn.classList.remove('hidden');
                 this.waitingMessage.textContent = `You are now the host. Click Start Game when ready.`;
+            }
+        });
+        
+        // Player rejoined after disconnection
+        this.socket.on('player_rejoined', (data) => {
+            console.log('Player rejoined:', data);
+            
+            // Find the player in the list and mark as active
+            const player = this.players.find(p => p.id === data.playerId);
+            if (player) {
+                player.status = 'active';
+                this.updatePlayersList();
+                
+                // Show notification
+                this.showNotification(`${data.playerName} has reconnected to the game`, 'success');
+            }
+        });
+        
+        // Game state update (for synchronization)
+        this.socket.on('game_state_update', (data) => {
+            console.log('Received game state update:', data);
+            
+            // Apply the state update to the game if it's active
+            if (window.game && this.gameStarted) {
+                // Update stations
+                if (data.stations) {
+                    window.game.stations = data.stations;
+                }
+                
+                // Update lines
+                if (data.lines) {
+                    window.game.lines = data.lines;
+                }
+                
+                // Update passengers
+                if (data.passengers) {
+                    window.game.passengers = data.passengers;
+                }
+                
+                // Update day and time
+                if (data.day) window.game.day = data.day;
+                if (data.time) window.game.time = data.time;
+                
+                // Update UI
+                window.game.updateStats();
             }
         });
         
@@ -484,5 +562,42 @@ class MultiplayerManager {
                 stats
             });
         }
+    }
+    
+    // Show a notification to the user
+    showNotification(message, type = 'info') {
+        // First try to use the teamwork manager's notification system if available
+        if (this.teamworkManager) {
+            this.teamworkManager.showNotification(message, type);
+            return;
+        }
+        
+        // Fallback to a simple notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        // Style the notification
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.left = '50%';
+        notification.style.transform = 'translateX(-50%)';
+        notification.style.backgroundColor = type === 'error' ? '#f44336' : 
+                                            type === 'warning' ? '#ff9800' : 
+                                            type === 'success' ? '#4CAF50' : '#2196F3';
+        notification.style.color = 'white';
+        notification.style.padding = '10px 20px';
+        notification.style.borderRadius = '4px';
+        notification.style.zIndex = '9999';
+        notification.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+        
+        document.body.appendChild(notification);
+        
+        // Remove after a few seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
     }
 } 
