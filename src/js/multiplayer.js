@@ -352,15 +352,18 @@ class MultiplayerManager {
         // Create teamwork manager
         this.teamworkManager = new TeamworkManager(game);
         
-        // Initialize team game with players and current player ID
-        this.teamworkManager.initTeamGame(this.players, this.playerId);
-        
         // If we have roles and station shapes from the server, apply them
         if (this.roles && this.stationShapes) {
             this.teamworkManager.playerRoles = this.roles;
             this.teamworkManager.playerStationShapes = this.stationShapes;
             
             // Update the UI to show the player's role
+            this.teamworkManager.updateRoleDisplay(this.playerId);
+            this.teamworkManager.updateShapeAssignmentInfo(this.playerId);
+        } else {
+            // Only assign roles and shapes if not provided by server
+            this.teamworkManager.assignRoles(this.players);
+            this.teamworkManager.assignStationShapes(this.players);
             this.teamworkManager.updateRoleDisplay(this.playerId);
             this.teamworkManager.updateShapeAssignmentInfo(this.playerId);
         }
@@ -373,6 +376,7 @@ class MultiplayerManager {
         } else {
             // Otherwise generate them locally
             this.teamworkManager.generateObjectives();
+            this.teamworkManager.updateObjectivesList();
             this.teamworkManager.startMission();
         }
         
