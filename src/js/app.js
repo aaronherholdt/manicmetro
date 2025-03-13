@@ -48,22 +48,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Game loop
         gameLoop = function(timestamp) {
-            // Calculate delta time in seconds
             const deltaTime = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
-            
-            // Update game state
-            game.update(deltaTime);
-            
-            // Update teamwork features
-            if (multiplayerManager.teamworkManager) {
+          
+            if (!game.paused) { // Add this check
+              game.update(deltaTime);
+          
+              if (multiplayerManager.teamworkManager) {
                 multiplayerManager.teamworkManager.update(deltaTime);
+              }
+          
+              renderer.render();
             }
-            
-            // Render game
-            renderer.render();
-            
-            // Continue the loop
+          
             requestAnimationFrame(gameLoop);
         };
         
